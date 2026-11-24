@@ -1,0 +1,25 @@
+services:
+  miraigo-x-p:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: miraigo-x-p
+    init: true
+    ports:
+      - "8081:8081"
+    environment:
+      EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL:-http://localhost:8080}
+      EXPO_PUBLIC_WEB_API_BASE_URL: ${EXPO_PUBLIC_WEB_API_BASE_URL:-}
+      EXPO_PUBLIC_FE_BASE_URL: ${EXPO_PUBLIC_FE_BASE_URL:-}
+      EXPO_PUBLIC_VOICE_API_URL: ${EXPO_PUBLIC_VOICE_API_URL:-}
+      REACT_NATIVE_PACKAGER_HOSTNAME: ${EXPO_PACKAGER_HOSTNAME:-host.docker.internal}
+      EXPO_NO_TELEMETRY: "1"
+    volumes:
+      - .:/app
+      - x_p_node_modules:/app/node_modules
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+volumes:
+  x_p_node_modules:

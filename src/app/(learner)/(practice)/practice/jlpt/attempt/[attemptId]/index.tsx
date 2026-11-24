@@ -1,0 +1,1 @@
+export { JlptAttemptScreen as default } from '@/features/practice/components/jlpt-screens';

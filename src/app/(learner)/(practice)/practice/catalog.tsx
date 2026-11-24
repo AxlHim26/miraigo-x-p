@@ -1,0 +1,1 @@
+export { PracticeCatalog as default } from '@/features/practice/components/practice-study';
