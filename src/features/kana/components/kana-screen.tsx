@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { LearnerBack } from '@/components/ui/learner-detail';
 import { LearnerCanvas, LearnerControl, LearnerHeading, useLearnerPalette } from '@/components/ui/learner-glass';
+import { hasJapaneseVoice, JAPANESE_SPEECH_LANGUAGE } from '@/shared/utils/japanese-speech';
 
 const kanaRows = [
   ['あ い う え お', 'ア イ ウ エ オ', 'a i u e o'],
@@ -40,8 +41,9 @@ export function KanaScreen() {
   async function play(letter: string) {
     setSpeechError(false);
     try {
+      if (!(await hasJapaneseVoice())) return setSpeechError(true);
       await Speech.stop();
-      Speech.speak(letter, { language: 'ja-JP', onError: () => setSpeechError(true) });
+      Speech.speak(letter, { language: JAPANESE_SPEECH_LANGUAGE, onError: () => setSpeechError(true) });
     } catch {
       setSpeechError(true);
     }
