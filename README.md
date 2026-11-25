@@ -83,6 +83,14 @@ Set `EXPO_PUBLIC_VOICE_API_URL` to the Voice AI service for native
 pronunciation, shadowing and transcription. See the
 [feature coverage and configuration](./docs/fe-feature-parity.md).
 
+Set `EXPO_PUBLIC_AI_BASE_URL` to the MiraiGo Japanese AI Platform to use it for
+native speech features instead of the legacy voice service. Pronunciation and
+shadowing then show a 0-100 score with per-word feedback, and file or voice
+transcription uses the platform's speech-to-text. The platform authenticates
+with the same access token as the backend, so the app must be signed in. Leave
+it empty to keep the legacy `EXPO_PUBLIC_VOICE_API_URL` behaviour. Platform
+limits apply: recordings up to 120 s (30 s for pronunciation) and 25 MB.
+
 ### Start the Expo app
 
 ```bash

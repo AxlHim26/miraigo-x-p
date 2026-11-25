@@ -3,12 +3,34 @@ import { fetch } from 'expo/fetch';
 import { z } from 'zod';
 
 import { env } from '@/core/config/env';
+import { getAiClient, type AiFile, type PronunciationResult } from '@/integrations/ai/ai-client';
+import { describeVoiceError } from '@/features/practice/services/voice-errors';
 import { getVoiceOrigin } from '@/features/practice/services/voice-origin';
 
 const prediction = z.object({ language: z.string(), confidence: z.number(), transcript: z.string() });
-export type VoicePrediction = z.infer<typeof prediction>;
+export type VoicePrediction = {
+  language: string;
+  /** Only the legacy voice service reports a confidence. */
+  confidence?: number;
+  transcript: string;
+  /** Present when the AI platform scored the recording against a reference sentence. */
+  pronunciation?: PronunciationResult;
+};
+
+const mimeTypes: Record<string, string> = {
+  m4a: 'audio/mp4', mp4: 'video/mp4', aac: 'audio/aac', wav: 'audio/wav', mp3: 'audio/mpeg',
+  ogg: 'audio/ogg', webm: 'audio/webm', flac: 'audio/flac', mov: 'video/quicktime',
+};
+
+function toAiFile(uri: string): AiFile {
+  const name = decodeURIComponent(uri.split('?')[0].split('/').pop() || 'recording.m4a');
+  const extension = name.includes('.') ? name.split('.').pop()!.toLowerCase() : 'm4a';
+  return { uri, name, type: mimeTypes[extension] ?? 'application/octet-stream' };
+}
+
 
 export { getVoiceOrigin } from '@/features/practice/services/voice-origin';
+export { describeVoiceError };
 
 async function submitAudio(path: '/predict' | '/predict-stream', uri: string, signal: AbortSignal) {
   const origin = getVoiceOrigin();
@@ -21,8 +43,23 @@ async function submitAudio(path: '/predict' | '/predict-stream', uri: string, si
   return response;
 }
 
-export async function predictSpeech(uri: string, signal: AbortSignal, demoTranscript = 'こんにちは。日本語を勉強しています。'): Promise<VoicePrediction> {
+export async function predictSpeech(
+  uri: string,
+  signal: AbortSignal,
+  demoTranscript = 'こんにちは。日本語を勉強しています。',
+  referenceText?: string,
+): Promise<VoicePrediction> {
   if (env.demoMode) return { language: 'ja', confidence: 0.89, transcript: demoTranscript };
+  const ai = getAiClient();
+  if (ai) {
+    const file = toAiFile(uri);
+    if (referenceText) {
+      const pronunciation = await ai.evaluatePronunciation(file, referenceText, { signal });
+      return { language: 'ja', transcript: pronunciation.recognizedText, pronunciation };
+    }
+    const result = await ai.transcribe(file, { signal });
+    return { language: result.language ?? 'ja', transcript: result.text };
+  }
   return prediction.parse(await (await submitAudio('/predict', uri, signal)).json());
 }
 
@@ -38,6 +75,14 @@ export async function transcribeSpeech(uri: string, signal: AbortSignal, onProgr
   if (env.demoMode) {
     onProgress(100);
     return 'こんにちは。日本語を勉強しています。';
+  }
+  const ai = getAiClient();
+  if (ai) {
+    // The platform transcribes synchronously (no progress events); report completion only.
+    onProgress(0);
+    const result = await ai.transcribe(toAiFile(uri), { signal });
+    onProgress(100);
+    return result.text;
   }
   const response = await submitAudio('/predict-stream', uri, signal);
   if (!response.body) throw new Error('Missing transcription stream');
