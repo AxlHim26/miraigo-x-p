@@ -3,7 +3,8 @@ import { fetch } from 'expo/fetch';
 import { z } from 'zod';
 
 import { env } from '@/core/config/env';
-import { getAiClient, type AiFile, type PronunciationResult } from '@/integrations/ai/ai-client';
+import type { PronunciationResult } from '@/integrations/ai/ai-client';
+import { getAiClient } from '@/integrations/ai/app-client';
 import { describeVoiceError } from '@/features/practice/services/voice-errors';
 import { getVoiceOrigin } from '@/features/practice/services/voice-origin';
 
@@ -17,16 +18,8 @@ export type VoicePrediction = {
   pronunciation?: PronunciationResult;
 };
 
-const mimeTypes: Record<string, string> = {
-  m4a: 'audio/mp4', mp4: 'video/mp4', aac: 'audio/aac', wav: 'audio/wav', mp3: 'audio/mpeg',
-  ogg: 'audio/ogg', webm: 'audio/webm', flac: 'audio/flac', mov: 'video/quicktime',
-};
-
-function toAiFile(uri: string): AiFile {
-  const name = decodeURIComponent(uri.split('?')[0].split('/').pop() || 'recording.m4a');
-  const extension = name.includes('.') ? name.split('.').pop()!.toLowerCase() : 'm4a';
-  return { uri, name, type: mimeTypes[extension] ?? 'application/octet-stream' };
-}
+/** expo/fetch only accepts expo-file-system `File` parts in FormData (not `{ uri, name, type }`). */
+const toAiFile = (uri: string) => new File(uri);
 
 
 export { getVoiceOrigin } from '@/features/practice/services/voice-origin';
@@ -50,7 +43,7 @@ export async function predictSpeech(
   referenceText?: string,
 ): Promise<VoicePrediction> {
   if (env.demoMode) return { language: 'ja', confidence: 0.89, transcript: demoTranscript };
-  const ai = getAiClient();
+  const ai = await getAiClient();
   if (ai) {
     const file = toAiFile(uri);
     if (referenceText) {
@@ -76,7 +69,7 @@ export async function transcribeSpeech(uri: string, signal: AbortSignal, onProgr
     onProgress(100);
     return 'こんにちは。日本語を勉強しています。';
   }
-  const ai = getAiClient();
+  const ai = await getAiClient();
   if (ai) {
     // The platform transcribes synchronously (no progress events); report completion only.
     onProgress(0);

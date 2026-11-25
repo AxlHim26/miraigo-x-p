@@ -15,10 +15,6 @@
  */
 import { z } from 'zod';
 
-import { env, getServiceOrigin } from '@/core/config/env';
-import { api } from '@/integrations/api/api-client';
-import { authStorage } from '@/integrations/auth/auth-storage';
-
 export type AiFile = Blob | { uri: string; name: string; type: string };
 
 export type AiClientOptions = {
@@ -27,6 +23,8 @@ export type AiClientOptions = {
   /** Return a fresh access token, or null if the session is gone. Called at most once per request. */
   refreshAccessToken?: () => Promise<string | null>;
   timeoutMs?: number;
+  /** Defaults to the global `fetch`. On Expo native pass `fetch` from `expo/fetch` and upload `File`s from expo-file-system. */
+  fetch?: typeof fetch;
 };
 
 export class AiError extends Error {
@@ -130,7 +128,13 @@ export type Analysis = z.infer<typeof analysisSchema>;
 
 type Envelope = { message?: string; errorCode?: string; requestId?: string; data?: unknown };
 
-export const createAiClient = ({ baseUrl, getAccessToken, refreshAccessToken, timeoutMs = 60_000 }: AiClientOptions) => {
+export const createAiClient = ({
+  baseUrl,
+  getAccessToken,
+  refreshAccessToken,
+  timeoutMs = 60_000,
+  fetch: fetchImpl = fetch,
+}: AiClientOptions) => {
   const root = baseUrl.replace(/\/$/, '');
 
   const send = async (path: string, init: RequestInit, token: string | null, external?: AbortSignal) => {
@@ -143,7 +147,7 @@ export const createAiClient = ({ baseUrl, getAccessToken, refreshAccessToken, ti
     headers.set('Accept', 'application/json');
     if (token) headers.set('Authorization', `Bearer ${token}`);
     try {
-      return await fetch(`${root}${path}`, { ...init, headers, signal: controller.signal });
+      return await fetchImpl(`${root}${path}`, { ...init, headers, signal: controller.signal });
     } catch (error) {
       if (external?.aborted) throw new AiError('Request cancelled', 0, 'ABORTED');
       if (controller.signal.aborted) throw new AiError('Request timed out', 0, 'TIMEOUT');
@@ -215,29 +219,3 @@ export const createAiClient = ({ baseUrl, getAccessToken, refreshAccessToken, ti
 };
 
 export type AiClient = ReturnType<typeof createAiClient>;
-
-let appClient: AiClient | null | undefined;
-
-/**
- * The AI client for this app, or `null` when no AI platform is configured (`EXPO_PUBLIC_AI_BASE_URL`)
- * or the app runs in demo mode. Callers fall back to the legacy voice service / demo data on `null`.
- */
-export const getAiClient = (): AiClient | null => {
-  if (env.demoMode) return null;
-  if (appClient !== undefined) return appClient;
-
-  const origin = getServiceOrigin(env.aiBaseUrl);
-  appClient = origin
-    ? createAiClient({
-        baseUrl: origin,
-        getAccessToken: authStorage.getAccessToken,
-        // Any backend call goes through the shared single-flight 401 -> refresh logic, which rotates the
-        // stored access token; read it back afterwards. A dead session clears the token -> null.
-        refreshAccessToken: async () => {
-          await api.get('/api/v1/users/me').catch(() => undefined);
-          return authStorage.getAccessToken();
-        },
-      })
-    : null;
-  return appClient;
-};

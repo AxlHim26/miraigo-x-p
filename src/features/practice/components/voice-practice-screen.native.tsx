@@ -124,6 +124,7 @@ function VoiceExercise({ mode }: { mode: VoiceMode }) {
     setBusy(true);
     setMessage('');
     try { await task(); } catch (error) {
+      if (__DEV__) console.warn('[voice] request failed:', error);
       if (active.current) setMessage(describeVoiceError(error) ?? fallback);
     } finally {
       action.current = false;
