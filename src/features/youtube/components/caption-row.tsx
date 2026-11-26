@@ -5,11 +5,21 @@ import { ThemedText } from '@/components/themed-text';
 import { LearnerControl, useLearnerPalette } from '@/components/ui/learner-glass';
 import { pronunciationFeedback } from '@/features/practice/services/pronunciation-feedback';
 import { useFurigana } from '@/features/youtube/hooks/use-youtube';
+import { highlightedLengths, type TextPart } from '@/features/youtube/utils/highlight';
 import { formatTime } from '@/features/youtube/utils/youtube';
 import type { Analysis, CaptionLine, PronunciationResult } from '@/integrations/ai/ai-client';
 
-function Furigana({ analysis }: { analysis: Analysis }) {
-  const parts = analysis.tokens.flatMap((token) => token.furigana ?? [{ text: token.surface, reading: null }]);
+/** Text whose first `reached` characters are marked yellow. */
+function Marked({ text, reached }: { text: string; reached: number }) {
+  return (
+    <ThemedText style={styles.base}>
+      {reached > 0 && <ThemedText style={[styles.base, styles.spoken]}>{text.slice(0, reached)}</ThemedText>}
+      {text.slice(reached)}
+    </ThemedText>
+  );
+}
+
+function Furigana({ parts, reached }: { parts: TextPart[]; reached: number[] }) {
   return (
     <View style={styles.furigana}>
       {parts.map((part, index) => (
@@ -17,17 +27,22 @@ function Furigana({ analysis }: { analysis: Analysis }) {
           <ThemedText style={styles.reading} themeColor="textSecondary">
             {part.reading && part.reading !== part.text ? part.reading : ' '}
           </ThemedText>
-          <ThemedText style={styles.base}>{part.text}</ThemedText>
+          <Marked text={part.text} reached={reached[index] ?? 0} />
         </View>
       ))}
     </View>
   );
 }
 
+const toParts = (analysis: Analysis): TextPart[] =>
+  analysis.tokens.flatMap((token) => token.furigana ?? [{ text: token.surface, reading: null }]);
+
 type Props = {
   line: CaptionLine;
   index: number;
   active: boolean;
+  /** Fraction of the line already spoken; only given to the line being played. */
+  progress?: number;
   selected: boolean;
   showFurigana: boolean;
   score?: PronunciationResult;
@@ -40,10 +55,13 @@ type Props = {
 };
 
 export const CaptionRow = memo(function CaptionRow({
-  line, index, active, selected, showFurigana, score, isRecording, busy, message, onPlay, onRecord, onStop,
+  line, index, active, progress, selected, showFurigana, score, isRecording, busy, message, onPlay, onRecord, onStop,
 }: Props) {
   const palette = useLearnerPalette();
-  const furigana = useFurigana(line.text, showFurigana);
+  // The readings also tell how long each word takes to say, so the highlighted line needs them too.
+  const analysis = useFurigana(line.text, showFurigana || active);
+  const parts = analysis.data ? toParts(analysis.data) : [{ text: line.text, reading: null }];
+  const reached = highlightedLengths(parts, progress ?? 0);
   const feedback = score ? pronunciationFeedback(score) : [];
 
   return (
@@ -55,9 +73,9 @@ export const CaptionRow = memo(function CaptionRow({
         <ThemedText type="small" themeColor="textSecondary">
           {formatTime(line.start)}{score ? ` · ${Math.round(score.scores.overall)}/100` : ''}
         </ThemedText>
-        {showFurigana && furigana.data
-          ? <Furigana analysis={furigana.data} />
-          : <ThemedText style={styles.base}>{line.text}</ThemedText>}
+        {showFurigana && analysis.data
+          ? <Furigana parts={parts} reached={reached} />
+          : <Marked text={line.text} reached={reached.reduce((sum, length) => sum + length, 0)} />}
       </Pressable>
       {selected && (
         <View style={styles.practice}>
@@ -93,6 +111,7 @@ const styles = StyleSheet.create({
   part: { alignItems: 'center' },
   reading: { fontSize: 10, lineHeight: 14 },
   base: { fontSize: 19, lineHeight: 28 },
+  spoken: { backgroundColor: '#FFD84D', color: '#1A1A1A' },
   practice: { gap: 8 },
   result: { gap: 4 },
 });

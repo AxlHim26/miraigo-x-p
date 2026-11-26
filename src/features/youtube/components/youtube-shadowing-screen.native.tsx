@@ -12,6 +12,7 @@ import { CaptionRow } from '@/features/youtube/components/caption-row';
 import { YouTubePlayer, type YouTubePlayerHandle } from '@/features/youtube/components/youtube-player.native';
 import { useLineRecorder } from '@/features/youtube/hooks/use-line-recorder';
 import { useCaptions } from '@/features/youtube/hooks/use-youtube';
+import { lineProgress } from '@/features/youtube/utils/highlight';
 import { activeLineIndex, isVideoId } from '@/features/youtube/utils/youtube';
 import type { CaptionLine } from '@/integrations/ai/ai-client';
 
@@ -35,6 +36,7 @@ function Shadowing({ videoId }: { videoId: string }) {
   const list = useRef<FlatList<CaptionLine>>(null);
   const recorder = useLineRecorder();
   const [active, setActive] = useState(-1);
+  const [progress, setProgress] = useState(0);
   const [selected, setSelected] = useState(-1);
   const [playing, setPlaying] = useState(false);
   const [furigana, setFurigana] = useState(true);
@@ -49,7 +51,10 @@ function Shadowing({ videoId }: { videoId: string }) {
   }, [active, playing]);
 
   const onTime = useCallback((time: number) => {
-    if (lines) setActive(activeLineIndex(lines, time));
+    if (!lines) return;
+    const index = activeLineIndex(lines, time);
+    setActive(index);
+    setProgress(index < 0 ? 0 : lineProgress(lines[index], time));
   }, [lines]);
 
   const { start, stop, isRecording, busy } = recorder;
@@ -58,6 +63,7 @@ function Shadowing({ videoId }: { videoId: string }) {
     if (!line || isRecording || busy) return;
     setSelected(index);
     setActive(index);
+    setProgress(0);
     player.current?.playSegment(line.start, line.end);
   }, [lines, isRecording, busy]);
 
@@ -114,6 +120,7 @@ function Shadowing({ videoId }: { videoId: string }) {
               line={item}
               index={index}
               active={index === active}
+              progress={index === active ? progress : undefined}
               selected={index === selected}
               showFurigana={furigana}
               score={recorder.scores[index]}
