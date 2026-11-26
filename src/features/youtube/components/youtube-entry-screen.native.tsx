@@ -31,7 +31,7 @@ export function YouTubeEntryScreen() {
         <TextInput
           accessibilityLabel="Link video YouTube"
           placeholder="https://www.youtube.com/watch?v=…"
-          placeholderTextColor={palette.text}
+          placeholderTextColor="#8A94A6"
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="url"
