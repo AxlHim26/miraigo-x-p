@@ -1,6 +1,6 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 
 import { studySymbol } from '@/components/ui/study-icon';
 import { StudyCover, StudyLinkRow, StudyShortcut } from '@/components/ui/study-navigation';
@@ -52,6 +52,10 @@ export function SpeakingHome() {
         <StudyShortcut label="Phát âm" icon={speakingIcons.mic} onPress={() => router.push({ pathname: '/practice/voice/[mode]', params: { mode: 'pronunciation' } })} />
         <StudyShortcut label="Chủ đề tự do" icon={speakingIcons.word} onPress={() => router.push('/practice/speaking/free')} />
       </View>
+      {Platform.OS !== 'web' && (
+        <StudyLinkRow title="Shadowing YouTube" subtitle="Xem video, đọc theo từng câu phụ đề" icon={speakingIcons.play}
+          onPress={() => router.push('/practice/youtube' as Href)} />
+      )}
       <StudyLinkRow title="Lịch luyện nói" subtitle="Hoạt động học trong tuần" icon={speakingIcons.calendar} onPress={() => router.push('/practice/plan')} />
       <StudyLinkRow title="Tiến độ luyện nói" icon={speakingIcons.chart} onPress={() => router.push('/practice/speaking/stats')} />
     </StudyScreen>
