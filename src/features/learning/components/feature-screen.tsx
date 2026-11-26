@@ -1,5 +1,5 @@
 import { useRef, type ComponentRef } from 'react';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { Platform, StyleSheet, View, type ScrollView } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 
@@ -87,6 +87,7 @@ export function FeatureScreen({ config, route }: FeatureScreenProps) {
             <>
               <LearnerControl label="Luyện phát âm" glyph="›" onPress={() => router.push({ pathname: '/practice/voice/[mode]', params: { mode: 'pronunciation' } })} />
               <LearnerControl label="Shadowing" glyph="›" onPress={() => router.push({ pathname: '/practice/voice/[mode]', params: { mode: 'shadowing' } })} />
+              <LearnerControl label="Shadowing YouTube" glyph="›" onPress={() => router.push('/practice/youtube' as Href)} />
               <LearnerControl label="Phiên âm tệp ghi âm" glyph="›" onPress={() => router.push({ pathname: '/practice/voice/[mode]', params: { mode: 'transcribe' } })} />
             </>
           )}
