@@ -15,6 +15,7 @@ export const env = {
     : demoMode ? 'https://demo.miraigo.invalid' : defaultApiBaseUrl,
   frontendBaseUrl: process.env.EXPO_PUBLIC_FE_BASE_URL?.trim() || '',
   voiceBaseUrl: process.env.EXPO_PUBLIC_VOICE_API_URL?.trim() || '',
+  aiBaseUrl: process.env.EXPO_PUBLIC_AI_BASE_URL?.trim() || '',
   appEnv: readPublicEnv(process.env.EXPO_PUBLIC_APP_ENV, 'development'),
   autoLogin: !demoMode && __DEV__ && process.env.EXPO_PUBLIC_APP_ENV === 'development'
     && process.env.EXPO_PUBLIC_DEV_AUTO_LOGIN === 'true',

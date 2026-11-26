@@ -176,7 +176,7 @@ function DialogueSession({ scene, threadId, immediate }: { scene: AiScenario; th
 
   return (
     <AiDialogueCall scene={scene} prompt={prompt} seconds={seconds} paused={paused} recording={recorder.isRecording}
-      busy={recorder.busy} playing={speaker.playing} error={recorder.error} close={() => router.dismissTo(back)}
+      busy={recorder.busy} playing={speaker.playing} error={recorder.error || (speaker.failed ? 'Thiết bị chưa phát được giọng tiếng Nhật.' : '')} close={() => router.dismissTo(back)}
       sample={env.demoMode ? () => { if (round) void respond({ text: round.answer, score: 90 - index * 2 }); } : undefined}
       end={finish} listen={() => speaker.playing ? speaker.stop() : void speaker.play(0)}
       pause={() => { speaker.stop(); setPaused((value) => !value); }}

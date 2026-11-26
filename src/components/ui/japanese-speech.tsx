@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
 import { LearnerControl } from '@/components/ui/learner-glass';
+import { hasJapaneseVoice, JAPANESE_SPEECH_LANGUAGE } from '@/shared/utils/japanese-speech';
 
 export function JapaneseSpeech({ text }: { text: string }) {
   return <JapaneseSpeechControls key={text} text={text} />;
@@ -16,8 +17,9 @@ function JapaneseSpeechControls({ text }: { text: string }) {
   async function play(rate: number) {
     setFailed(false);
     try {
+      if (!(await hasJapaneseVoice())) return setFailed(true);
       await Speech.stop();
-      Speech.speak(text, { language: 'ja-JP', rate, onError: () => setFailed(true) });
+      Speech.speak(text, { language: JAPANESE_SPEECH_LANGUAGE, rate, onError: () => setFailed(true) });
     } catch {
       setFailed(true);
     }

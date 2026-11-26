@@ -17,7 +17,8 @@ import { pronunciationSentences } from '@/features/practice/data/pronunciation-d
 import { transcriptScore } from '@/features/practice/data/transcript-score';
 import { shadowingSentences } from '@/features/practice/data/shadowing-data';
 import { freeSpeakingTopics } from '@/features/speaking/lessons';
-import { getVoiceOrigin, predictSpeech, transcribeSpeech, type VoicePrediction } from '@/features/practice/services/voice-service.native';
+import { pronunciationFeedback } from '@/features/practice/services/pronunciation-feedback';
+import { describeVoiceError, getVoiceOrigin, predictSpeech, transcribeSpeech, type VoicePrediction } from '@/features/practice/services/voice-service.native';
 
 const titles = {
   pronunciation: 'Luyện phát âm',
@@ -122,8 +123,9 @@ function VoiceExercise({ mode }: { mode: VoiceMode }) {
     action.current = true;
     setBusy(true);
     setMessage('');
-    try { await task(); } catch {
-      if (active.current) setMessage(fallback);
+    try { await task(); } catch (error) {
+      if (__DEV__) console.warn('[voice] request failed:', error);
+      if (active.current) setMessage(describeVoiceError(error) ?? fallback);
     } finally {
       action.current = false;
       setBusy(false);
@@ -192,7 +194,7 @@ function VoiceExercise({ mode }: { mode: VoiceMode }) {
         if (active.current) setTranscript(text);
         return;
       }
-      const response = await predictSpeech(uri, controller.signal, sentence?.japanese);
+      const response = await predictSpeech(uri, controller.signal, sentence?.japanese, sentence?.japanese);
       if (!active.current) return;
       if (conversational) {
         if (latestClip.current === uri) latestClip.current = null;
@@ -253,8 +255,22 @@ function VoiceExercise({ mode }: { mode: VoiceMode }) {
       {result && (
         <LearnerPanel>
           <ThemedText type="smallBold">Ngôn ngữ nhận diện: {result.language}</ThemedText>
-          {sentence && <ThemedText>Khớp với câu mẫu: {transcriptScore(sentence.japanese, result.transcript)}%</ThemedText>}
+          {sentence && !result.pronunciation && <ThemedText>Khớp với câu mẫu: {transcriptScore(sentence.japanese, result.transcript)}%</ThemedText>}
           <ThemedText selectable>{result.transcript || 'Không nhận diện được lời nói.'}</ThemedText>
+        </LearnerPanel>
+      )}
+      {result?.pronunciation && (
+        <LearnerPanel>
+          <ThemedText type="smallBold">Điểm phát âm: {Math.round(result.pronunciation.scores.overall)}/100</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Độ chính xác {Math.round(result.pronunciation.scores.accuracy)}% · Đầy đủ {Math.round(result.pronunciation.scores.completeness)}%
+          </ThemedText>
+          {pronunciationFeedback(result.pronunciation).map((item, position) => (
+            <ThemedText key={`${item.word}-${position}`}>
+              {item.word}: {item.notes.length > 0 ? item.notes.join(' ') : item.missed ? 'Không nghe thấy.' : 'Đọc chưa chuẩn.'}
+            </ThemedText>
+          ))}
+          {pronunciationFeedback(result.pronunciation).length === 0 && <ThemedText>Phát âm rõ ràng, không có lỗi nào được phát hiện.</ThemedText>}
         </LearnerPanel>
       )}
       {transcript !== null && (

@@ -2,6 +2,8 @@ import { useFocusEffect } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { useCallback, useRef, useState } from 'react';
 
+import { hasJapaneseVoice, JAPANESE_SPEECH_LANGUAGE } from '@/shared/utils/japanese-speech';
+
 type PlaybackOptions = {
   rate?: number;
   through?: boolean;
@@ -49,7 +51,7 @@ export function useStudySpeech(lines: readonly string[], initial = 0) {
       setFraction(0);
       try {
         Speech.speak(text, {
-          language: 'ja-JP',
+          language: JAPANESE_SPEECH_LANGUAGE,
           rate: options.rate ?? 1,
           useApplicationAudioSession: false,
           onBoundary: (event: { charIndex: number }) => {
@@ -72,6 +74,7 @@ export function useStudySpeech(lines: readonly string[], initial = 0) {
     }
 
     try {
+      if (!(await hasJapaneseVoice())) return fail();
       await Speech.stop();
       if (isCurrent()) speakLine(start);
     } catch {

@@ -3,12 +3,27 @@ import { fetch } from 'expo/fetch';
 import { z } from 'zod';
 
 import { env } from '@/core/config/env';
+import type { PronunciationResult } from '@/integrations/ai/ai-client';
+import { getAiClient } from '@/integrations/ai/app-client';
+import { describeVoiceError } from '@/features/practice/services/voice-errors';
 import { getVoiceOrigin } from '@/features/practice/services/voice-origin';
 
 const prediction = z.object({ language: z.string(), confidence: z.number(), transcript: z.string() });
-export type VoicePrediction = z.infer<typeof prediction>;
+export type VoicePrediction = {
+  language: string;
+  /** Only the legacy voice service reports a confidence. */
+  confidence?: number;
+  transcript: string;
+  /** Present when the AI platform scored the recording against a reference sentence. */
+  pronunciation?: PronunciationResult;
+};
+
+/** expo/fetch only accepts expo-file-system `File` parts in FormData (not `{ uri, name, type }`). */
+const toAiFile = (uri: string) => new File(uri);
+
 
 export { getVoiceOrigin } from '@/features/practice/services/voice-origin';
+export { describeVoiceError };
 
 async function submitAudio(path: '/predict' | '/predict-stream', uri: string, signal: AbortSignal) {
   const origin = getVoiceOrigin();
@@ -21,8 +36,23 @@ async function submitAudio(path: '/predict' | '/predict-stream', uri: string, si
   return response;
 }
 
-export async function predictSpeech(uri: string, signal: AbortSignal, demoTranscript = 'こんにちは。日本語を勉強しています。'): Promise<VoicePrediction> {
+export async function predictSpeech(
+  uri: string,
+  signal: AbortSignal,
+  demoTranscript = 'こんにちは。日本語を勉強しています。',
+  referenceText?: string,
+): Promise<VoicePrediction> {
   if (env.demoMode) return { language: 'ja', confidence: 0.89, transcript: demoTranscript };
+  const ai = await getAiClient();
+  if (ai) {
+    const file = toAiFile(uri);
+    if (referenceText) {
+      const pronunciation = await ai.evaluatePronunciation(file, referenceText, { signal });
+      return { language: 'ja', transcript: pronunciation.recognizedText, pronunciation };
+    }
+    const result = await ai.transcribe(file, { signal });
+    return { language: result.language ?? 'ja', transcript: result.text };
+  }
   return prediction.parse(await (await submitAudio('/predict', uri, signal)).json());
 }
 
@@ -38,6 +68,14 @@ export async function transcribeSpeech(uri: string, signal: AbortSignal, onProgr
   if (env.demoMode) {
     onProgress(100);
     return 'こんにちは。日本語を勉強しています。';
+  }
+  const ai = await getAiClient();
+  if (ai) {
+    // The platform transcribes synchronously (no progress events); report completion only.
+    onProgress(0);
+    const result = await ai.transcribe(toAiFile(uri), { signal });
+    onProgress(100);
+    return result.text;
   }
   const response = await submitAudio('/predict-stream', uri, signal);
   if (!response.body) throw new Error('Missing transcription stream');
