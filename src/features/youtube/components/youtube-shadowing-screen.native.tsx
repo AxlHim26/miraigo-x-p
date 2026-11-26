@@ -84,6 +84,7 @@ function Shadowing({ videoId }: { videoId: string }) {
         ref={player}
         videoId={videoId}
         onTime={onTime}
+        onSegmentEnd={() => setProgress(1)}
         onPlayingChange={setPlaying}
         onError={() => setPlayerError(true)}
       />

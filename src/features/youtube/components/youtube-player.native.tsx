@@ -12,6 +12,7 @@ const ALLOWED = /^(about:blank|https:\/\/(miraigo\.app|([a-z0-9-]+\.)*(youtube\.
 const message = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ready') }),
   z.object({ type: z.literal('time'), t: z.number() }),
+  z.object({ type: z.literal('segmentEnd') }),
   z.object({ type: z.literal('state'), playing: z.boolean() }),
   z.object({ type: z.literal('error'), code: z.number() }),
 ]);
@@ -26,6 +27,8 @@ type Props = {
   ref?: Ref<YouTubePlayerHandle>;
   videoId: string;
   onTime: (seconds: number) => void;
+  /** The segment started with `playSegment` has been played to its end. */
+  onSegmentEnd: () => void;
   onPlayingChange: (playing: boolean) => void;
   onError: (code: number) => void;
 };
@@ -35,7 +38,7 @@ const page = (videoId: string) => `<!doctype html><html><head>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>html,body,#player{margin:0;padding:0;width:100%;height:100%;background:#000}</style></head>
 <body><div id="player"></div><script>
-var player = null, stopAt = null;
+var player = null, stopAt = null, heldAt = null;
 function send(m) { window.ReactNativeWebView.postMessage(JSON.stringify(m)); }
 function onYouTubeIframeAPIReady() {
   player = new YT.Player('player', {
@@ -51,14 +54,18 @@ function onYouTubeIframeAPIReady() {
 setInterval(function () {
   if (!player || !player.getPlayerState || player.getPlayerState() !== 1) return;
   var t = player.getCurrentTime();
-  if (stopAt !== null && t >= stopAt) { stopAt = null; player.pauseVideo(); }
+  if (stopAt !== null && t >= stopAt) {
+    stopAt = null; heldAt = t; player.pauseVideo(); send({ type: 'segmentEnd' }); return;
+  }
+  // The player still reports "playing" for a moment after pausing, at a time that is already in the next line.
+  if (heldAt !== null) { if (Math.abs(t - heldAt) < 0.5) return; heldAt = null; }
   send({ type: 'time', t: t });
 }, 100);
-window.playSegment = function (a, b) { if (!player) return; stopAt = b; player.seekTo(a, true); player.playVideo(); };
+window.playSegment = function (a, b) { if (!player) return; stopAt = b; heldAt = null; player.seekTo(a, true); player.playVideo(); };
 window.pauseSegment = function () { stopAt = null; if (player) player.pauseVideo(); };
 </script><script src="https://www.youtube.com/iframe_api"></script></body></html>`;
 
-export function YouTubePlayer({ ref, videoId, onTime, onPlayingChange, onError }: Props) {
+export function YouTubePlayer({ ref, videoId, onTime, onSegmentEnd, onPlayingChange, onError }: Props) {
   const view = useRef<WebView<object>>(null);
   // `videoId` is interpolated into the page, so only a well-formed id is ever used.
   const source = useMemo(
@@ -78,6 +85,7 @@ export function YouTubePlayer({ ref, videoId, onTime, onPlayingChange, onError }
     const parsed = message.safeParse(data);
     if (!parsed.success) return;
     if (parsed.data.type === 'time') onTime(parsed.data.t);
+    else if (parsed.data.type === 'segmentEnd') onSegmentEnd();
     else if (parsed.data.type === 'state') onPlayingChange(parsed.data.playing);
     else if (parsed.data.type === 'error') onError(parsed.data.code);
   }
