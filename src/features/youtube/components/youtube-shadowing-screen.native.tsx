@@ -69,7 +69,7 @@ function Shadowing({ videoId }: { videoId: string }) {
   }, [lines, start]);
 
   return (
-    <ThemedView style={[styles.screen, { paddingTop: insets.top }]}>
+    <ThemedView style={styles.screen}>
       <View style={styles.toolbar}>
         <LearnerBack href="/practice" label="Luyện tập" />
         <LearnerControl label="Furigana" selected={furigana} onPress={() => setFurigana((value) => !value)} />
@@ -134,7 +134,7 @@ function Shadowing({ videoId }: { videoId: string }) {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  toolbar: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingBottom: 8 },
+  toolbar: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8 },
   notice: { padding: 16, gap: 8 },
   list: { padding: 12 },
   auto: { marginBottom: 8 },
