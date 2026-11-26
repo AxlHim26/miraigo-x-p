@@ -1,4 +1,4 @@
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -71,7 +71,7 @@ function Shadowing({ videoId }: { videoId: string }) {
   return (
     <ThemedView style={styles.screen}>
       <View style={styles.toolbar}>
-        <LearnerBack href="/practice" label="Luyện tập" />
+        <LearnerBack href={'/practice/youtube' as Href} label="Video" />
         <LearnerControl label="Furigana" selected={furigana} onPress={() => setFurigana((value) => !value)} />
       </View>
       <YouTubePlayer

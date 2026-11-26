@@ -9,6 +9,23 @@ async function requireClient() {
   return client;
 }
 
+export const useChannels = () =>
+  useQuery({
+    queryKey: ['youtube', 'channels'],
+    queryFn: async ({ signal }) => (await requireClient()).youtubeChannels({ signal }),
+    staleTime: 60 * 60_000,
+    retry: 1,
+  });
+
+export const useChannelVideos = (channelId: string | undefined) =>
+  useQuery({
+    queryKey: ['youtube', 'channel-videos', channelId],
+    queryFn: async ({ signal }) => (await requireClient()).youtubeChannelVideos(channelId!, { signal }),
+    enabled: !!channelId,
+    staleTime: 10 * 60_000,
+    retry: 1,
+  });
+
 export const useCaptions = (videoId: string) =>
   useQuery({
     queryKey: ['youtube', 'captions', videoId],

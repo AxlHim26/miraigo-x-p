@@ -129,6 +129,16 @@ export const captionsSchema = z.object({
   lines: z.array(z.object({ start: z.number(), end: z.number(), text: z.string() })),
 });
 
+export const channelsSchema = z.array(
+  z.object({ id: z.string(), name: z.string(), description: z.string(), captions: z.enum(['manual', 'auto']) }),
+);
+
+export const channelVideosSchema = z.array(
+  z.object({ videoId: z.string(), title: z.string(), publishedAt: z.string(), thumbnailUrl: z.string() }),
+);
+
+export type Channel = z.infer<typeof channelsSchema>[number];
+export type ChannelVideo = z.infer<typeof channelVideosSchema>[number];
 export type Captions = z.infer<typeof captionsSchema>;
 export type CaptionLine = Captions['lines'][number];
 export type Transcription = z.infer<typeof transcriptionSchema>;
@@ -203,6 +213,15 @@ export const createAiClient = ({
   };
 
   return {
+    youtubeChannels: (options: { signal?: AbortSignal } = {}) =>
+      request('/api/v1/youtube/channels', () => ({ method: 'GET' }), channelsSchema, options.signal),
+    youtubeChannelVideos: (channelId: string, options: { signal?: AbortSignal } = {}) =>
+      request(
+        `/api/v1/youtube/channels/${encodeURIComponent(channelId)}/videos`,
+        () => ({ method: 'GET' }),
+        channelVideosSchema,
+        options.signal,
+      ),
     youtubeCaptions: (videoId: string, options: { signal?: AbortSignal } = {}) =>
       request(
         `/api/v1/youtube/captions?videoId=${encodeURIComponent(videoId)}`,

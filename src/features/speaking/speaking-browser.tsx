@@ -53,7 +53,7 @@ export function SpeakingHome() {
         <StudyShortcut label="Chủ đề tự do" icon={speakingIcons.word} onPress={() => router.push('/practice/speaking/free')} />
       </View>
       {Platform.OS !== 'web' && (
-        <StudyLinkRow title="Shadowing YouTube" subtitle="Xem video, đọc theo từng câu phụ đề" icon={speakingIcons.play}
+        <StudyLinkRow title="Shadowing YouTube" subtitle="Video từ kênh podcast tiếng Nhật, đọc theo từng câu" icon={speakingIcons.play}
           onPress={() => router.push('/practice/youtube' as Href)} />
       )}
       <StudyLinkRow title="Lịch luyện nói" subtitle="Hoạt động học trong tuần" icon={speakingIcons.calendar} onPress={() => router.push('/practice/plan')} />
